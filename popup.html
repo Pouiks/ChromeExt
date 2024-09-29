@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>BugSender</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            padding: 10px;
+            font-size: 0.85em;
+        }
+
+        h1 {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 350px;
+        }
+
+        .form-control {
+            font-size: 0.85em;
+            padding: 4px 8px;
+        }
+
+        .btn {
+            font-size: 0.85em;
+            padding: 6px 8px;
+        }
+
+        .impact-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+
+        .impact-button {
+            font-size: 0.85em;
+            padding: 6px 8px;
+        }
+
+        .screenshot-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        #screenshotPreview {
+            margin-top: 10px;
+            width: 100%;
+            display: none;
+            cursor: pointer;
+            filter: grayscale(50%);
+            transition: filter 0.3s ease;
+        }
+
+        #eyeIcon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .screenshot-container:hover #eyeIcon {
+            opacity: 1;
+        }
+
+        #screenshotPreview:hover {
+            filter: grayscale(0%);
+        }
+
+        #confirmationOverlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: rgba(255, 255, 255, 0.9); /* Fond blanc avec opacité */
+            z-index: 1000;
+            text-align: center;
+            display: none; /* Caché par défaut */
+            padding-top: 100px;
+        }
+
+        #confirmationOverlay.active {
+            display: block;
+        }
+
+        #confirmationOverlay .checkmark {
+            font-size: 100px;
+            color: #4CAF50;
+        }
+
+        #confirmationOverlay h2 {
+            margin-top: 20px;
+            color: #4CAF50;
+        }
+
+        #confirmationOverlay button {
+            margin-top: 30px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            color: white;
+            font-weight: 800;
+            background-color: rgba(92, 92, 92, 0.8);
+            z-index: 1001;
+            display: none; /* Par défaut, caché */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loader-content {
+            text-align: center;
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .screeshotValidation{
+            display: flex;
+            flex-direction: row;
+            align-items: center; /* Aligne verticalement les éléments */
+            gap: 10px; /* Espace entre le bouton et l'icône */
+
+        }
+        .loader {
+            border: 10px solid #f3f3f3; /* Light grey */
+            border-top: 10px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 2s linear infinite;
+            }
+
+            @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="bugFormContainer">
+        <h1 class="mb-4">Récupérer les Informations</h1>
+
+        <button id="myButton" class="btn btn-primary mb-3">Obtenir les Informations</button>
+
+        <div class="input-container">
+            <label for="fullName">Nom complet :</label>
+            <input type="text" id="fullName" placeholder="Entrez votre nom complet" class="form-control">
+        </div>
+
+        <div class="input-container">
+            <label for="urlDisplay">URL complète :</label>
+            <input type="text" id="urlDisplay" class="form-control" readonly>
+        </div>
+
+        <div class="input-container">
+            <label for="domainDisplay">Nom du domaine :</label>
+            <input type="text" id="domainDisplay" class="form-control" readonly>
+        </div>
+
+        <div class="input-container">
+            <label for="caseNumber">Numéro du cas :</label>
+            <input type="number" id="caseNumber" class="form-control" required>
+        </div>
+
+        <div class="input-container">
+            <label for="bugDescription">Description du bug :</label>
+            <textarea id="bugDescription" placeholder="Décrire ici votre bug" rows="3" class="form-control"></textarea>
+        </div>
+
+        <!-- Boutons d'impact -->
+        <div class="impact-container">
+            <button type="button" id="impactMinor" class="btn btn-success impact-button">Peu gênant</button>
+            <button type="button" id="impactIntermediate" class="btn btn-warning impact-button">Perturbant</button>
+            <button type="button" id="impactMajor" class="btn btn-danger impact-button">Grave</button>
+        </div>
+
+        <button id="sendBugButton" class="btn btn-primary mt-3">Envoyer le bug</button>
+        <div class="screeshotValidation">
+            <button id="captureScreenshotButton" class="btn btn-secondary mt-3">Prendre une capture d'écran</button>
+            <span id="screenshotSuccessIcon" style="display: none; color: green; font-size: 1.5em;">✅</span>
+
+        </div>
+        
+
+        <!-- Conteneur de l'image et de l'icône -->
+        <div class="screenshot-container">
+            <img id="screenshotPreview" alt="Aperçu de la capture d'écran" />
+            <div id="eyeIcon">👁️</div> <!-- Icône de l'œil -->
+        </div>
+    </div>
+    <!-- Overlay de chargement -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loader-content">
+            <div class="loader"></div>
+          <p>Envoi du bug en cours...</p>
+        </div>
+    </div>
+    <!-- Overlay de confirmation -->
+    <div id="confirmationOverlay">
+        <div class="checkmark">✅</div>
+        <h2>Bug envoyé avec succès!</h2>
+        <button id="submitAnotherBugButton" class="btn btn-primary">Soumettre un autre bug</button>
+    </div>
+
+
+
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/popup.js"></script>
+</body>
+</html>
